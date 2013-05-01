@@ -34,18 +34,14 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         first_ten = LibraryItem.getAllUserItems('1197522', 'FUWTcdnRvb1bFy8ugDudDDhA')
         i = 1
+        selectFrom = []
         for item in first_ten:
-            print "Eintrag %d" % i
-            i += 1
-            print item
-            print item.bibTexKey
-            print item.bibTexEntry.encode("ascii", "ignore")
-            #for key in item.keys():
-            #    try:
-            #        print u"\t%s = '%s'" % (key, item[key])
-            #    except UnicodeEncodeError:
-            #        print u"\t%s = '%s'" % (key, "Unicode Error")
+            selectFrom.append([item.authors, item.title])
+        self.view.window().show_quick_panel(selectFrom, self.callBack)
         self.view.insert(edit, 0, "Hello, World!")
+
+    def callBack(self, arg):
+        print arg
 
 
 class LibraryItem(object):
