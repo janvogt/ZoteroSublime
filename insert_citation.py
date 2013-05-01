@@ -2,6 +2,7 @@ import sublime
 import sublime_plugin
 import os
 import sys
+import re
 
 if os.name == 'nt':
     from ctypes import windll, create_unicode_buffer
@@ -37,7 +38,8 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
             print "Eintrag %d" % i
             i += 1
             print item
-            #print item.bibTexEntry.encode("ascii", "ignore")
+            print item.bibTexKey
+            print item.bibTexEntry.encode("ascii", "ignore")
             #for key in item.keys():
             #    try:
             #        print u"\t%s = '%s'" % (key, item[key])
@@ -56,7 +58,8 @@ class LibraryItem(object):
         self.zotInstance = zotInstance
         self.authors = self.__decodeAuthors(libItemDict[u'creators'])
         self.title = libItemDict[u'title']
-        #self.bibTexEntry = self.__zoteroInstances[self.zotInstance].item(self.id, content='bibtex')
+        self.__bibTexEntry = None
+        self.__bibTexKey = None
 
     def __decodeAuthors(self, cratorsDict):
         retVal = u""
@@ -71,6 +74,23 @@ class LibraryItem(object):
 
     def __unicode__(self):
         return u"LibraryItem<%s in %s>(%s: \"%s\")" % (self.id, "%s(%s)" % self.zotInstance, self.authors, self.title)
+
+    @property
+    def bibTexEntry(self):
+        if self.__bibTexEntry is None:
+            self.__bibTexEntry = self.__zoteroInstances[self.zotInstance].item(self.id, content='bibtex')[0]
+            keyMatch = re.search("@\\w+?\\{(.*?),", self.__bibTexEntry)
+            if keyMatch:
+                self.__bibTexKey = keyMatch.group(1)
+            else:
+                raise RuntimeError("Although a bibTex-entry has been recieved, the key could not be extracted!")
+        return self.__bibTexEntry
+
+    @property
+    def bibTexKey(self):
+        if self.__bibTexKey is None:
+            self.bibTexEntry
+        return self.__bibTexKey
 
     @classmethod
     def getAllUserItems(cls, userId, key):
