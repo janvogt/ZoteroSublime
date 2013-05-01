@@ -6,7 +6,6 @@ import sys
 if os.name == 'nt':
     from ctypes import windll, create_unicode_buffer
 
-
 def add_to_path(path):
     # Python 2.x on Windows can't properly import from non-ASCII paths, so
     # this code added the DOC 8.3 version of the lib folder to the path in
@@ -32,14 +31,13 @@ from pyzotero import zotero
 
 class InsertCitationCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        zot = zotero.Zotero('1197522', 'user', 'FUWTcdnRvb1bFy8ugDudDDhA')
-        first_ten = zot.top()
+        first_ten = LibraryItem.getAllUserItems('1197522', 'FUWTcdnRvb1bFy8ugDudDDhA')
         i = 1
         for item in first_ten:
             print "Eintrag %d" % i
             i += 1
-            libI = LibraryItem('1197522', item)
-            print libI
+            print item
+            #print item.bibTexEntry.encode("ascii", "ignore")
             #for key in item.keys():
             #    try:
             #        print u"\t%s = '%s'" % (key, item[key])
@@ -51,12 +49,14 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
 class LibraryItem(object):
     __zoteroInstances = {}
 
-    def __init__(self, libId, libDict):
-        self.id = libDict[u'key']
-        self.libId = libId
-        self.authors = self.__decodeAuthors(libDict[u'creators'])
-        self.title = libDict[u'title']
-        LibraryItem.__zoteroInstances["test"] = zotero.Zotero('1197522', 'user', 'FUWTcdnRvb1bFy8ugDudDDhA')
+    def __init__(self, zotInstance, libItemDict):
+        """Private Constructor.
+        Don't use to create instances. Use getAllUserItems or getAllGroupItems instead"""
+        self.id = libItemDict[u'key']
+        self.zotInstance = zotInstance
+        self.authors = self.__decodeAuthors(libItemDict[u'creators'])
+        self.title = libItemDict[u'title']
+        #self.bibTexEntry = self.__zoteroInstances[self.zotInstance].item(self.id, content='bibtex')
 
     def __decodeAuthors(self, cratorsDict):
         retVal = u""
@@ -67,7 +67,35 @@ class LibraryItem(object):
         return retVal
 
     def __str__(self):
-        return str(self.__unicode__())
+        return self.__unicode__().encode("ascii", "replace")
 
     def __unicode__(self):
-        return u"LibraryItem<%s in %s>(%s: \"%s\")" % (self.id, self.libId, self.authors, self.title)
+        return u"LibraryItem<%s in %s>(%s: \"%s\")" % (self.id, "%s(%s)" % self.zotInstance, self.authors, self.title)
+
+    @classmethod
+    def getAllUserItems(cls, userId, key):
+        userId = unicode(userId)
+        key = unicode(key)
+        zotInstance = (userId, "user")
+        if zotInstance not in cls.__zoteroInstances.keys():
+            cls.__zoteroInstances[zotInstance] = zotero.Zotero(userId, "user", key)
+        retVal = []
+        for libItemDict in cls.__zoteroInstances[zotInstance].top():
+            retVal.append(LibraryItem(zotInstance, libItemDict))
+        for group in cls.__zoteroInstances[zotInstance].groups():
+            retVal += LibraryItem.getAllGroupItems(group[u'group_id'], key)
+        return retVal
+
+    @classmethod
+    def getAllGroupItems(cls, groupId, key):
+        groupId = unicode(groupId)
+        key = unicode(key)
+        zotInstance = (groupId, "group")
+        if zotInstance not in cls.__zoteroInstances.keys():
+            cls.__zoteroInstances[zotInstance] = zotero.Zotero(groupId, "group", key)
+        retVal = []
+        for libItemDict in cls.__zoteroInstances[zotInstance].top():
+            retVal.append(LibraryItem(zotInstance, libItemDict))
+        for group in cls.__zoteroInstances[zotInstance].groups():
+            retVal += LibraryItem.getAllGroupItems(group[u'group_id'], key)
+        return retVal
