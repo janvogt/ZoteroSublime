@@ -1,2 +1,3 @@
 *.pyc
 private.txt
+!lib/
