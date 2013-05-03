@@ -30,6 +30,10 @@ class PluginEventHandler(sublime_plugin.EventListener):
         if Library.hasLibraryForView(view):
             UpdateThread(Library.getLibraryForView(view)).start()
 
+    def on_pre_save(self, view):
+        if Library.hasLibraryForView(view):
+            Library.getLibraryForView(view).save()
+
 
 class UpdateThread(threading.Thread):
     __updateLock = threading.Lock()

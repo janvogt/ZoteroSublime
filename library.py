@@ -57,7 +57,10 @@ class Library(object):
 
     @pathToBibFile.setter
     def pathToBibFile(self, value):
-        raise NotImplementedError
+        if self.__pathToBibFile is not None:
+            raise NotImplementedError
+        else:
+            self.__pathToBibFile = value
 
     def update(self):
         """Collect all items from Zotero and if it exists unions them with those from
@@ -71,8 +74,7 @@ class Library(object):
                     None,
                     entry.entrys.get("author", "No Author(s)"),
                     entry.entrys.get("title", "No Title"),
-                    entry,
-                    True
+                    entry
                 ) for entry in bibTexEntries]
             )
         newItems.extend(self.__getAllUserItems(*self.__rootZoteroCredentials))
@@ -94,7 +96,7 @@ class Library(object):
 
     def save(self):
         if self.pathToBibFile is not None:
-            self.__writeToBibFile([item.bibTexEntry for item in self.libItems if item.cited], self.pathToBibFile)
+            self.__writeToBibFile([item.bibTexEntry for item in self.LibraryItems if item.cited], self.pathToBibFile)
             return True
         else:
             return False
@@ -169,12 +171,15 @@ class Library(object):
 
     @staticmethod
     def __readFromBibFile(filePath):
-        with codecs.open(filePath, "r", "utf-8") as f:
-            bibTexString = f.read()
+        retVal = []
+        try:
+            with codecs.open(filePath, "r", "utf-8") as f:
+                bibTexString = f.read()
+        except IOError:
+            return retVal
         startIndex = 0
         braceLevel = 0
         entry = False
-        retVal = []
         for i in xrange(0, len(bibTexString)):
             if entry is True:
                 if bibTexString[i] == u"{":
