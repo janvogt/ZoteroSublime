@@ -72,8 +72,8 @@ class Library(object):
                 [LibraryItem(
                     entry.zoteroKey,
                     None,
-                    entry.entrys.get("author", "No Author(s)"),
-                    entry.entrys.get("title", "No Title"),
+                    entry.author,
+                    entry.title,
                     entry
                 ) for entry in bibTexEntries]
             )
@@ -214,7 +214,10 @@ class LibraryItem(object):
 
     @property
     def menuRows(self):
-        return [self.authors, self.title]
+        retVal = [self.authors, self.title]
+        if self.id is None:
+            retVal.append("Entry from local .bib-file")
+        return retVal
 
     def __str__(self):
         return self.__unicode__().encode("ascii", "replace")
@@ -281,15 +284,38 @@ class BibTexEntry(object):
 
     @property
     def zoteroKey(self):
-        return self.__valueInCurlyBraces.search(self.entrys.get("zoterodocid", "")).group(1)
+        try:
+            return self.__valueInCurlyBraces.search(self.entrys.get("zoterodocid", "")).group(1)
+        except AttributeError:
+            return None
 
     @property
     def zoteroLibraryId(self):
-        return self.__valueInCurlyBraces.search(self.entrys.get("zoterolibid", "")).group(1)
+        try:
+            return self.__valueInCurlyBraces.search(self.entrys.get("zoterolibid", "")).group(1)
+        except AttributeError:
+            return None
 
     @property
     def zoteroLibraryType(self):
-        return self.__valueInCurlyBraces.search(self.entrys.get("zoterolibtype", "")).group(1)
+        try:
+            return self.__valueInCurlyBraces.search(self.entrys.get("zoterolibtype", "")).group(1)
+        except AttributeError:
+            return None
+
+    @property
+    def author(self):
+        try:
+            return self.__valueInCurlyBraces.search(self.entrys.get("author", "")).group(1)
+        except AttributeError:
+            return "No Author(s)"
+
+    @property
+    def title(self):
+        try:
+            return self.__valueInCurlyBraces.search(self.entrys.get("title", "")).group(1)
+        except AttributeError:
+            return "No Title"
 
     def zoteroLink(self, key, libId, libType):
         self.entrys["zoterodocid"] = "{%s}" % key

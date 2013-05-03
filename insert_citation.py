@@ -12,7 +12,6 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
         selectFrom = [item.menuRows for item in self.selectionList]
         #BibTexEntry.writeToFile([item.bibTexEntry for item in first_ten], "/Users/jan/Desktop/test.bib")
         self.view.window().show_quick_panel(selectFrom, self.callBack)
-        self.view.insert(edit, 0, "Hello, World!")
 
     def getLibrary(self):
         try:
@@ -22,7 +21,15 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
         return self.__library
 
     def callBack(self, arg):
-        print self.getLibrary().cite(self.selectionList[arg])
+        if arg > -1:
+            self.insertCitation(self.getLibrary().cite(self.selectionList[arg]))
+
+    def insertCitation(self, key):
+        edit = self.view.begin_edit("Insert Citation")
+        for region in self.view.sel():
+            self.view.replace(edit, region, key)
+        self.view.sel().clear()
+        self.view.end_edit(edit)
 
 
 class PluginEventHandler(sublime_plugin.EventListener):
