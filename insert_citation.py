@@ -44,26 +44,31 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
 
     def insertCitation(self, key):
         edit = self.view.begin_edit("Insert Citation")
-        newRegions = []
-        for region in self.view.sel():
-            localCite, region = self.createCite(region)
-            replaceString = localCite % key
-            newPos = region.begin() + len(replaceString)
-            self.view.replace(edit, region, replaceString)
-            newRegions.append(sublime.Region(newPos, newPos))
-        self.view.sel().clear()
-        for region in newRegions:
-            self.view.sel().add(region)
-        self.view.end_edit(edit)
+        try:
+            newRegions = []
+            for region in self.view.sel():
+                if re.search("[M|m]arkdown", self.view.scope_name(0)):
+                    localCite, region = self.createPandocMarkdownCite(region)
+                else:
+                    localCite, region = self.createLatexCite(region)
+                replaceString = localCite % key
+                newPos = region.begin() + len(replaceString)
+                self.view.replace(edit, region, replaceString)
+                newRegions.append(sublime.Region(newPos, newPos))
+            self.view.sel().clear()
+            for region in newRegions:
+                self.view.sel().add(region)
+        finally:
+            self.view.end_edit(edit)
 
-    def createCite(self, region):
+    def createLatexCite(self, region):
         lineRegion = self.view.line(region)
         precedingText = self.view.substr(sublime.Region(lineRegion.begin(), region.begin()))
         precedingMatch = re.search("(?:\\\\([^\\s\\{\\[\\(]*?))?((?:\\[\\S*?\\])?\\[\\S*?\\])?(?:\\{(\\S*?)\\})?$", precedingText)
         if precedingMatch is None:
             if self.citeType is None:
                 self.citeType = "cite"
-            return "\\%s{%%s}" % self.citeType
+            return "\\%s{%%s}" % self.citeType, region
         else:
             retRegion = sublime.Region(region.begin() - len(precedingMatch.group()), region.end())
             if self.citeType is None:
@@ -72,6 +77,19 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
                 return "\\%s%s{%s,%%s}" % (self.citeType, self.getRegExGroup(precedingMatch, 2, ""), precedingMatch.group(3)), retRegion
             else:
                 return "\\%s%s{%%s}" % (self.citeType, self.getRegExGroup(precedingMatch, 2, "")), retRegion
+
+    def createPandocMarkdownCite(self, region):
+        lineRegion = self.view.line(region)
+        precedingText = self.view.substr(sublime.Region(lineRegion.begin(), region.begin()))
+        precedingMatch = re.search("\\[([^\\]]*)\\]?$", precedingText)
+        if precedingMatch is None:
+            return "@%s", region
+        else:
+            retRegion = sublime.Region(region.begin() - len(precedingMatch.group()), region.end())
+            if precedingMatch.group(1) is not None:
+                return "[%s @%%s]" % precedingMatch.group(1), retRegion
+            else:
+                return "[%s]", retRegion
 
     @staticmethod
     def getRegExGroup(match, groupNumber, default):
