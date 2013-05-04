@@ -1,0 +1,7 @@
+{
+	// Copy this file to your user folder (e.g. on OS X: Sublime Text 2 -> Preferences -> Browse Packages... 
+	// and find the folder "User") and add valid zotero user credentials, as you could create on
+	// https://www.zotero.org/settings/keys/new
+	"zotero_user_id": "enter_your_zotero_user_id",
+	"zotero_user_key": "enter_your_zotero_user_key"
+}

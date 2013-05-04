@@ -2,15 +2,21 @@ import sublime
 import sublime_plugin
 from library import Library
 import threading
+import os
+
+__author__ = "Jan Vogt"
+__version__ = "0.1"
 
 
 class InsertCitationCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+    def run(self, edit, format=None):
+        """Offers dialog to select citation and isert selected in the format given by format. Format
+        needs to contain %%s where the citation-key should be inserted"""
         library = self.getLibrary()
+        self.lastFormat = format
         self.selectionList = library.LibraryItems
         self.selectionList.sort(key=lambda x: x.menuRows[0])
         selectFrom = [item.menuRows for item in self.selectionList]
-        #BibTexEntry.writeToFile([item.bibTexEntry for item in first_ten], "/Users/jan/Desktop/test.bib")
         self.view.window().show_quick_panel(selectFrom, self.callBack)
 
     def getLibrary(self):
@@ -22,7 +28,10 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
 
     def callBack(self, arg):
         if arg > -1:
-            self.insertCitation(self.getLibrary().cite(self.selectionList[arg]))
+            if self.lastFormat is None:
+                self.insertCitation(self.getLibrary().cite(self.selectionList[arg]))
+            else:
+                self.insertCitation(self.lastFormat % self.getLibrary().cite(self.selectionList[arg]))
 
     def insertCitation(self, key):
         edit = self.view.begin_edit("Insert Citation")
@@ -40,6 +49,11 @@ class PluginEventHandler(sublime_plugin.EventListener):
     def on_pre_save(self, view):
         if Library.hasLibraryForView(view):
             Library.getLibraryForView(view).save()
+
+    def on_load(self, view):
+        if Library.hasBibFile(os.path.splitext(view.file_name())[0] + '.bib'):
+            UpdateThread(Library.getLibraryForView(view)).start()
+
 
 
 class UpdateThread(threading.Thread):
