@@ -76,6 +76,8 @@ class Library(object):
                     None,
                     entry.author,
                     entry.title,
+                    entry.year,
+                    entry.abstract,
                     entry
                 ) for entry in bibTexEntries]
             )
@@ -119,6 +121,16 @@ class Library(object):
             if view.file_name() is not None:
                 filename = os.path.splitext(view.file_name())[0] + '.bib'
             return Library(view, settings.get("zotero_user_id"), settings.get("zotero_user_key"), filename)
+
+    def removeLibraryForView(self, onlyIfEmpty=True):
+        if onlyIfEmpty:
+            for item in self.LibraryItems:
+                if item.cited:
+                    return
+        for key in self.__instances.keys():
+            if self.__instances[key] == self:
+                del self.__instances[key]
+                break
 
     @classmethod
     def hasLibraryForView(cls, view):
@@ -212,11 +224,15 @@ class Library(object):
 
 
 class LibraryItem(object):
-    def __init__(self, docId, zotInstance, authors, title, bibTexEntry=None):
+    def __init__(self, docId=None, zotInstance=None, authors=None, title=None, year=None, abstract=None, bibTexEntry=None):
+        if docId is None and bibTexEntry is None:
+            raise ValueError("LibraryItem needs at least either a docId or a bibTexEntry")
         self.id = docId
         self.zotInstance = zotInstance
         self.authors = authors
         self.title = title
+        self.year = year
+        self.abstract = abstract
         self.bibTexEntry = bibTexEntry
 
     @property
@@ -225,7 +241,27 @@ class LibraryItem(object):
 
     @property
     def menuRows(self):
-        retVal = [self.authors, self.title]
+        retVal = []
+        searchableRow = "%s (%s): %s" % (self.authors, self.year, self.title)
+        if len(searchableRow) > 100:
+            retVal.append(searchableRow[0:97] + "...")
+        else:
+            retVal.append(searchableRow)
+        if len(self.abstract) > 0:
+            abstractRow = ""
+            for word in self.abstract.split():
+                if len(abstractRow) + len(word) > 125:
+                    if len(retVal) < 6:
+                        retVal.append(abstractRow)
+                        abstractRow = word
+                    else:
+                        retVal.append(abstractRow[0:122] + "...")
+                        abstractRow = None
+                        break
+                else:
+                    abstractRow += " %s" % word
+            if abstractRow is not None:
+                retVal.append(abstractRow)
         if self.id is None:
             retVal.append("Entry from local .bib-file")
         return retVal
@@ -250,23 +286,21 @@ class LibraryItem(object):
 
     @staticmethod
     def initFromZotero(zotInstance, libItemDict):
-        try:
-            return LibraryItem(
-                libItemDict[u'key'],
-                zotInstance,
-                LibraryItem.__decodeAuthors(libItemDict[u'creators']),
-                libItemDict[u'title'])
-        except TypeError as T:
-            print "TypeError: %s" % type(libItemDict)
-            print libItemDict
-            raise T
+        return LibraryItem(
+            libItemDict[u'key'],
+            zotInstance,
+            LibraryItem.__decodeAuthors(libItemDict[u'creators']),
+            libItemDict.get(u'title', "No Title"),
+            libItemDict.get(u'date', "????"),
+            libItemDict.get(u'abstractNote', "")
+        )
 
     @staticmethod
     def __decodeAuthors(cratorsDict):
         retVal = u""
         seperator = u""
         for creator in cratorsDict:
-            retVal += (u"%s%s, %s" % (seperator, creator[u'lastName'], creator[u'firstName'].split()[0]))
+            retVal += (u"%s%s, %s" % (seperator, creator[u'lastName'], creator[u'firstName'].split()[0][0:1]))
             seperator = u'; '
         return retVal
 
@@ -295,38 +329,37 @@ class BibTexEntry(object):
 
     @property
     def zoteroKey(self):
-        try:
-            return self.__valueInCurlyBraces.search(self.entrys.get("zoterodocid", "")).group(1)
-        except AttributeError:
-            return None
+        return self.__getEntry("zoterodocid", None)
 
     @property
     def zoteroLibraryId(self):
-        try:
-            return self.__valueInCurlyBraces.search(self.entrys.get("zoterolibid", "")).group(1)
-        except AttributeError:
-            return None
+        return self.__getEntry("zoterolibid", None)
 
     @property
     def zoteroLibraryType(self):
-        try:
-            return self.__valueInCurlyBraces.search(self.entrys.get("zoterolibtype", "")).group(1)
-        except AttributeError:
-            return None
+        return self.__getEntry("zoterolibtype", None)
 
     @property
     def author(self):
-        try:
-            return self.__valueInCurlyBraces.search(self.entrys.get("author", "")).group(1)
-        except AttributeError:
-            return "No Author(s)"
+        return self.__getEntry("author", "No Author(s)")
 
     @property
     def title(self):
+        return self.__getEntry("title", "No Title")
+
+    @property
+    def year(self):
+        return self.__getEntry("year", "????")
+
+    @property
+    def abstract(self):
+        return self.__getEntry("abstract", "")
+
+    def __getEntry(self, entry, default=""):
         try:
-            return self.__valueInCurlyBraces.search(self.entrys.get("title", "")).group(1)
+            return self.__valueInCurlyBraces.search(self.entrys.get(entry, "")).group(1)
         except AttributeError:
-            return "No Title"
+            return default
 
     def zoteroLink(self, key, libId, libType):
         self.entrys["zoterodocid"] = "{%s}" % key

@@ -1,0 +1,6 @@
+[
+    { 
+    	"caption": "ZoteroCite: Insert BibTex-Header", 
+    	"command": "insert_bib_header_and_footer" 
+    }
+]

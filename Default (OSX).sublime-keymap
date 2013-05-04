@@ -1,0 +1,24 @@
+[
+	{
+		"keys":["ctrl+c","t"],
+		"command": "insert_citation",
+		"args":
+		{
+			"citeType":"citet"
+		},
+		"context":
+		[
+			{
+				"key":"selector"
+			}
+		]
+	},
+	{
+		"keys":["ctrl+c","p"],
+		"command": "insert_citation",
+		"args":
+		{
+			"citeType":"citep"
+		}
+	}
+]

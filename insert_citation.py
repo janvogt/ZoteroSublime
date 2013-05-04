@@ -1,19 +1,29 @@
+__author__ = "news.jan.vogt@me.com"
+__version__ = "0.1"
+
 import sublime
 import sublime_plugin
 from library import Library
 import threading
 import os
+import re
 
-__author__ = "Jan Vogt"
-__version__ = "0.1"
+
+class InsertBibHeaderAndFooterCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.insert(edit, 0, """\\usepackage[backend=biber, style=apa6, natbib=true]{biblatex}
+        \\addbibresource{filename.bib}
+        """)
+        self.view.insert(edit, self.view.size(), """
+        \\printbibliography""")
 
 
 class InsertCitationCommand(sublime_plugin.TextCommand):
-    def run(self, edit, format=None):
+    def run(self, edit, citeType=None):
         """Offers dialog to select citation and isert selected in the format given by format. Format
         needs to contain %%s where the citation-key should be inserted"""
         library = self.getLibrary()
-        self.lastFormat = format
+        self.citeType = citeType
         self.selectionList = library.LibraryItems
         self.selectionList.sort(key=lambda x: x.menuRows[0])
         selectFrom = [item.menuRows for item in self.selectionList]
@@ -28,17 +38,49 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
 
     def callBack(self, arg):
         if arg > -1:
-            if self.lastFormat is None:
-                self.insertCitation(self.getLibrary().cite(self.selectionList[arg]))
-            else:
-                self.insertCitation(self.lastFormat % self.getLibrary().cite(self.selectionList[arg]))
+            self.insertCitation(self.getLibrary().cite(self.selectionList[arg]))
+        else:
+            self.getLibrary().removeLibraryForView()
 
     def insertCitation(self, key):
         edit = self.view.begin_edit("Insert Citation")
+        newRegions = []
         for region in self.view.sel():
-            self.view.replace(edit, region, key)
+            localCite, region = self.createCite(region)
+            replaceString = localCite % key
+            newPos = region.begin() + len(replaceString)
+            self.view.replace(edit, region, replaceString)
+            newRegions.append(sublime.Region(newPos, newPos))
         self.view.sel().clear()
+        for region in newRegions:
+            self.view.sel().add(region)
         self.view.end_edit(edit)
+
+    def createCite(self, region):
+        lineRegion = self.view.line(region)
+        precedingText = self.view.substr(sublime.Region(lineRegion.begin(), region.begin()))
+        precedingMatch = re.search("(?:\\\\([^\\s\\{\\[\\(]*?))?((?:\\[\\S*?\\])?\\[\\S*?\\])?(?:\\{(\\S*?)\\})?$", precedingText)
+        if precedingMatch is None:
+            if self.citeType is None:
+                self.citeType = "cite"
+            return "\\%s{%%s}" % self.citeType
+        else:
+            retRegion = sublime.Region(region.begin() - len(precedingMatch.group()), region.end())
+            if self.citeType is None:
+                self.citeType = self.getRegExGroup(precedingMatch, 1, "cite")
+            if precedingMatch.group(3) is not None:
+                return "\\%s%s{%s,%%s}" % (self.citeType, self.getRegExGroup(precedingMatch, 2, ""), precedingMatch.group(3)), retRegion
+            else:
+                return "\\%s%s{%%s}" % (self.citeType, self.getRegExGroup(precedingMatch, 2, "")), retRegion
+
+    @staticmethod
+    def getRegExGroup(match, groupNumber, default):
+        try:
+            if match.group(groupNumber) is not None:
+                return match.group(groupNumber)
+        except IndexError:
+            pass
+        return default
 
 
 class PluginEventHandler(sublime_plugin.EventListener):
@@ -53,7 +95,6 @@ class PluginEventHandler(sublime_plugin.EventListener):
     def on_load(self, view):
         if Library.hasBibFile(os.path.splitext(view.file_name())[0] + '.bib'):
             UpdateThread(Library.getLibraryForView(view)).start()
-
 
 
 class UpdateThread(threading.Thread):
