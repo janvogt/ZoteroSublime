@@ -5,13 +5,7 @@
 		"args":
 		{
 			"citeType":"citet"
-		},
-		"context":
-		[
-			{
-				"key":"selector"
-			}
-		]
+		}
 	},
 	{
 		"keys":["ctrl+c","p"],
@@ -20,5 +14,9 @@
 		{
 			"citeType":"citep"
 		}
+	},
+	{
+		"keys":["ctrl+alt+l"],
+		"command": "insert_citation"
 	}
 ]
