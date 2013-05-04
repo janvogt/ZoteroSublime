@@ -1,3 +1,6 @@
+__author__ = "news.jan.vogt@me.com"
+__version__ = "0.1"
+
 import sublime
 import os
 import sys
@@ -57,9 +60,7 @@ class Library(object):
 
     @pathToBibFile.setter
     def pathToBibFile(self, value):
-        if self.__pathToBibFile is not None:
-            raise NotImplementedError
-        else:
+        with self.__libLock:
             self.__pathToBibFile = value
 
     def update(self):
@@ -67,7 +68,8 @@ class Library(object):
         the BibTex-file. In case of matches it assumes Zoteros' version to be the correct one"""
         newItems = []
         if self.pathToBibFile is not None:
-            bibTexEntries = self.__readFromBibFile(self.pathToBibFile)
+            with self.__libLock:
+                bibTexEntries = self.__readFromBibFile(self.pathToBibFile)
             newItems.extend(
                 [LibraryItem(
                     entry.zoteroKey,
@@ -95,11 +97,12 @@ class Library(object):
                     self.__libItems.append(item)
 
     def save(self):
-        if self.pathToBibFile is not None:
-            self.__writeToBibFile([item.bibTexEntry for item in self.LibraryItems if item.cited], self.pathToBibFile)
-            return True
-        else:
-            return False
+        with self.__libLock:
+            if self.pathToBibFile is not None:
+                self.__writeToBibFile([item.bibTexEntry for item in self.LibraryItems if item.cited], self.pathToBibFile)
+                return True
+            else:
+                return False
 
     def cite(self, libItem):
         if libItem.bibTexEntry is None:
@@ -123,6 +126,14 @@ class Library(object):
             cls.__instances[view.buffer_id()]
             return True
         except KeyError:
+            return False
+
+    @staticmethod
+    def hasBibFile(pathToBibFile):
+        try:
+            with codecs.open(pathToBibFile, "r", "utf-8"):
+                return True
+        except IOError:
             return False
 
     def __bibTexEntryForLibItem(self, libItem):
