@@ -1,23 +1,26 @@
 ================
-%(package_name)s
+ZoteroCite
 ================
 
-<main description>
+This package enables you to read your library data via the Zotero Web-Api and to cite in Markdown documents which will be converted by Pandoc (see also the Pandown plugin for Sublime) or in every other file using LaTeX cite keys.
 
+This Package is in early development status and any contributions are highly welcome! 
+There are a lot of undocumented features and conventions (E.g. the created .bib file is always called like the corresponding file). Up from now May 2013 it is working for me greatly (OS X, Pandown configuered by hand to find the .bib file). I intend to further develop and document this package - but again any contribution is welcome.
 
 The Problem
 ===========
 
-<problem this package tries to solve>
+*not yet documented*
 
 
 Getting Started
 ===============
 
-- Install `%(package_name)s`_
+- Install `ZoteroCite`_
 
-.. _%(package_name)s: https://
+you probably know how to use Github and Zotero Packages if you are intending to use this package in it's current state.
 
+The rest of this file is boilerplated by the AAAPackageDevelopment Package
 If you're running a full installation of Sublime Text, simply doublelick on the
 ``.sublime-package`` file. If you're running a portable installation, you need
 to perform an `installation by hand`_.
