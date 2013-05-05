@@ -9,6 +9,30 @@ import os
 import re
 
 
+class UpdateLibraryCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        if Library.hasLibraryForView(self.view):
+            UpdateThread(Library.getLibraryForView(self.view)).start()
+
+    def is_enabled(self):
+        return Library.hasLibraryForView(self.view)
+
+    def is_visible(self):
+        return self.is_enabled()
+
+
+class CreateLibraryCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        Library.getLibraryForView(self.view, True)
+        self.view.run_command("update_library")
+
+    def is_enabled(self):
+        return not Library.hasLibraryForView(self.view)
+
+    def is_visible(self):
+        return self.is_enabled()
+
+
 class InsertBibHeaderAndFooterCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         self.view.insert(edit, 0, """\\usepackage[backend=biber, style=apa6, natbib=true]{biblatex}
@@ -17,11 +41,10 @@ class InsertBibHeaderAndFooterCommand(sublime_plugin.TextCommand):
         self.view.insert(edit, self.view.size(), """
         \\printbibliography""")
 
+
 class PreparePandownForZoteroCite(sublime_plugin.ApplicationCommand):
     def run(self):
-        view sublime.active_window().active_view()
-        view.file_name()
-
+        pass
 
 
 class InsertCitationCommand(sublime_plugin.TextCommand):
@@ -87,15 +110,27 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
     def createPandocMarkdownCite(self, region):
         lineRegion = self.view.line(region)
         precedingText = self.view.substr(sublime.Region(lineRegion.begin(), region.begin()))
-        precedingMatch = re.search("\\[([^\\]]*)\\]?$", precedingText)
+        print precedingText
+        precedingMatch = re.search("""\\[\s*
+                                    ((?:[^\\]\\;]+\\;)*)
+                                    \s*
+                                    (?:([^\\;\\]@]*@[^\\;\\]@]+)|
+                                    ([^\\;\\]@]*))
+                                    (\\]?)
+                                    $""", precedingText, re.VERBOSE | re.DEBUG)
         if precedingMatch is None:
             return "@%s", region
         else:
+            print self.getRegExGroup(precedingMatch, 1, "1")
+            print self.getRegExGroup(precedingMatch, 2, "2")
+            print self.getRegExGroup(precedingMatch, 3, "3")
+            print self.getRegExGroup(precedingMatch, 4, "4")
             retRegion = sublime.Region(region.begin() - len(precedingMatch.group()), region.end())
-            if precedingMatch.group(1) is not None:
-                return "[%s @%%s]" % precedingMatch.group(1), retRegion
+            if precedingMatch.group(2) is None:
+                return "[%s%s @%%s%s" % (self.getRegExGroup(precedingMatch, 1, ""), self.getRegExGroup(precedingMatch, 3, ""), self.getRegExGroup(precedingMatch, 4, "")), retRegion
+            # Apperently: if the second group matches the third group will never be evaluated at the previously fourth group becomes the new thir one.
             else:
-                return "[%s]", retRegion
+                return "[%s%s;@%%s%s" % (self.getRegExGroup(precedingMatch, 1, ""), precedingMatch.group(2), self.getRegExGroup(precedingMatch, 3, "")), retRegion
 
     @staticmethod
     def getRegExGroup(match, groupNumber, default):
@@ -108,17 +143,13 @@ class InsertCitationCommand(sublime_plugin.TextCommand):
 
 
 class PluginEventHandler(sublime_plugin.EventListener):
-    def on_activated(self, view):
-        if Library.hasLibraryForView(view):
-            UpdateThread(Library.getLibraryForView(view)).start()
-
     def on_pre_save(self, view):
         if Library.hasLibraryForView(view):
             Library.getLibraryForView(view).save()
 
     def on_load(self, view):
         if Library.hasBibFile(os.path.splitext(view.file_name())[0] + '.bib'):
-            UpdateThread(Library.getLibraryForView(view)).start()
+            view.run_command("create_library")
 
 
 class UpdateThread(threading.Thread):

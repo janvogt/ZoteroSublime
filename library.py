@@ -38,7 +38,7 @@ from pyzotero import zotero
 class Library(object):
     __instances = {}
 
-    def __init__(self, view, zotLibId, zotLibKey, pathToBibFile=None):
+    def __init__(self, view, zotLibId, zotLibKey, pathToBibFile=None, noUpdate=False):
         """Initializes a library based on a Zoteros user library and an optional BibTex-file"""
         self.__instances[view.buffer_id()] = self
         self.__pathToBibFile = pathToBibFile
@@ -47,7 +47,8 @@ class Library(object):
         self.__rootZoteroCredentials = (zotLibId, zotLibKey)
         self.__libLock = threading.RLock()
         self.__zoteroLock = threading.RLock()
-        self.update()
+        if not noUpdate:
+            self.update()
 
     @property
     def LibraryItems(self):
@@ -112,7 +113,7 @@ class Library(object):
         return libItem.bibTexEntry.key
 
     @classmethod
-    def getLibraryForView(cls, view):
+    def getLibraryForView(cls, view, noInitialUpdate=False):
         try:
             return cls.__instances[view.buffer_id()]
         except KeyError:
@@ -120,7 +121,7 @@ class Library(object):
             filename = None
             if view.file_name() is not None:
                 filename = os.path.splitext(view.file_name())[0] + '.bib'
-            return Library(view, settings.get("zotero_user_id"), settings.get("zotero_user_key"), filename)
+            return Library(view, settings.get("zotero_user_id"), settings.get("zotero_user_key"), filename, noInitialUpdate)
 
     def removeLibraryForView(self, onlyIfEmpty=True):
         if onlyIfEmpty:

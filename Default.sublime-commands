@@ -2,5 +2,13 @@
     { 
     	"caption": "ZoteroCite: Insert BibTex-Header", 
     	"command": "insert_bib_header_and_footer" 
+    },
+    { 
+    	"caption": "ZoteroCite: Create Library", 
+    	"command": "create_library" 
+    },
+    { 
+    	"caption": "ZoteroCite: Update Library from Zotero and if existing from bib-file", 
+    	"command": "update_library" 
     }
 ]

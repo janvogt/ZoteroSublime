@@ -1,14 +1,12 @@
 [
-	{
-		"keys":["ctrl+c","t"],
-		"command": "insert_citation",
+	{ "keys": ["ctrl+c","t"], "command": "insert_citation",
 		"args":
 		{
 			"citeType":"citet"
 		}
 	},
 	{
-		"keys":["ctrl+c","p"],
+		"keys": ["ctrl+c","p"],
 		"command": "insert_citation",
 		"args":
 		{
@@ -16,7 +14,9 @@
 		}
 	},
 	{
-		"keys":["ctrl+alt+l"],
-		"command": "insert_citation"
+		"keys": ["super+shift+l"], "command": "insert_citation", "context":
+		[
+			{ "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+		]
 	}
 ]
